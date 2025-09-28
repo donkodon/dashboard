@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ささげ管理ページ</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>ささげ管理ページ</h1>
+            <nav>
+                <a href="index.html" class="btn btn-secondary">ダッシュボード</a>
+                <a href="admin.html" class="btn btn-primary">管理ページ</a>
+            </nav>
+        </header>
+        
+        <main class="dashboard-main">
+            <div class="tabs">
+                <div class="tab active" data-tab="upload">データアップロード</div>
+                <div class="tab" data-tab="manual">手動入力</div>
+                <div class="tab" data-tab="manage">データ管理</div>
+                <!-- 新しいタブを追加 -->
+                <div class="tab" data-tab="product-analysis">商品分析</div>
+            </div>
+
+            <!-- データアップロードタブ -->
+            <section id="upload-tab" class="tab-content active">
+                <div class="card">
+                    <h2>CSVファイルアップロード</h2>
+                    <div class="form-group">
+                        <label for="csv-file">CSVファイルを選択:</label>
+                        <input type="file" id="csv-file" class="form-control" accept=".csv">
+                    </div>
+                    <div class="form-group">
+                        <label for="data-type">データタイプ:</label>
+                        <select id="data-type" class="form-control">
+                            <option value="measurements">採寸データ</option>
+                            <option value="photos">撮影データ</option>
+                            <!-- 新しいオプションを追加 -->
+                            <option value="productData">商品データ</option>
+                        </select>
+                    </div>
+                    <button id="upload-csv" class="btn btn-primary">アップロード</button>
+                </div>
+
+                <!-- ドラッグ＆ドロップアップロード領域 -->
+                <div class="card">
+                    <h2>ドラッグ＆ドロップでアップロード</h2>
+                    <div id="drop-zone" class="drop-zone">
+                        <p>ここにCSVファイルをドラッグ＆ドロップしてください</p>
+                        <p>またはクリックしてファイルを選択</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="drop-data-type">データタイプ:</label>
+                        <select id="drop-data-type" class="form-control">
+                            <option value="measurements">採寸データ</option>
+                            <option value="photos">撮影データ</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>データエクスポート</h2>
+                    <button id="export-csv" class="btn btn-secondary">CSVエクスポート</button>
+                </div>
+
+                <div class="card">
+                    <h2>Firebase連携</h2>
+                    <button id="sync-firebase" class="btn btn-primary">Firebaseと同期</button>
+                </div>
+                
+                <!-- デバッグ用：ローカルストレージクリアボタン -->
+                <div class="card">
+                    <h2>デバッグ機能</h2>
+                    <button id="clear-storage" class="btn btn-danger">ローカルストレージをクリア</button>
+                    <button id="show-storage" class="btn btn-secondary">ローカルストレージを表示</button>
+                </div>
+            </section>
+
+            <!-- 手動入力タブ -->
+            <section id="manual-tab" class="tab-content" style="display: none;">
+                <div class="card">
+                    <h2>手動データ入力</h2>
+                    <div class="form-group">
+                        <label for="manual-date">日付:</label>
+                        <input type="date" id="manual-date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-assignee">担当者:</label>
+                        <select id="manual-assignee" class="form-control" required>
+                            <option value="">選択してください</option>
+                            <option value="田中">田中</option>
+                            <option value="佐藤">佐藤</option>
+                            <option value="鈴木">鈴木</option>
+                            <option value="高橋">高橋</option>
+                            <option value="伊藤">伊藤</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-category">カテゴリ:</label>
+                        <select id="manual-category" class="form-control" required>
+                            <option value="">選択してください</option>
+                            <option value="トップス">トップス</option>
+                            <option value="ボトムス">ボトムス</option>
+                            <option value="アウター">アウター</option>
+                            <option value="シューズ">シューズ</option>
+                            <option value="アクセサリー">アクセサリー</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-count">点数:</label>
+                        <input type="number" id="manual-count" class="form-control" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-type">データタイプ:</label>
+                        <select id="manual-type" class="form-control" required>
+                            <option value="measurements">採寸データ</option>
+                            <option value="photos">撮影データ</option>
+                        </select>
+                    </div>
+                    <button id="add-manual-data" class="btn btn-primary">データ追加</button>
+                </div>
+            </section>
+
+            <!-- データ管理タブ -->
+            <section id="manage-tab" class="tab-content" style="display: none;">
+                <div class="card">
+                    <h2>データ一覧</h2>
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="manage-type">データタイプ:</label>
+                            <select id="manage-type" class="form-control">
+                                <option value="all">すべて</option>
+                                <option value="measurements">採寸データ</option>
+                                <option value="photos">撮影データ</option>
+                            </select>
+                        </div>
+                        <button id="refresh-data" class="btn btn-secondary">データ更新</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>日付</th>
+                                    <th>担当者</th>
+                                    <th>カテゴリ</th>
+                                    <th>点数</th>
+                                    <th>タイプ</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="data-list">
+                                <!-- データはJavaScriptで動的に追加 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 商品分析タブを追加 -->
+            <section id="product-analysis-tab" class="tab-content" style="display: none;">
+                <div class="card">
+                    <h2>商品データ分析</h2>
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="analysis-type">分析タイプ:</label>
+                            <select id="analysis-type" class="form-control">
+                                <option value="work-efficiency">作業効率分析</option>
+                                <option value="item-distribution">アイテム分布</option>
+                                <option value="brand-analysis">ブランド分析</option>
+                                <option value="condition-analysis">状態分析</option>
+                            </select>
+                        </div>
+                        <button id="run-analysis" class="btn btn-primary">分析実行</button>
+                    </div>
+                    
+                    <div id="analysis-results">
+                        <!-- 分析結果がここに表示されます -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/data-manager.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

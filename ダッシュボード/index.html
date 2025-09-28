@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ささげ作業管理ダッシュボード</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>ささげ作業管理ダッシュボード</h1>
+            <nav>
+                <a href="index.html" class="btn btn-secondary">ダッシュボード</a>
+                <a href="admin.html" class="btn btn-primary">管理ページ</a>
+            </nav>
+        </header>
+        
+        <main class="dashboard-main">
+            <div class="dashboard-grid">
+                <!-- サマリーカード -->
+                <section class="summary-section">
+                    <h2>サマリー</h2>
+                    <div class="summary-cards">
+                        <div class="card">
+                            <h3>採寸点数</h3>
+                            <p class="count">0</p>
+                        </div>
+                        <div class="card">
+                            <h3>撮影点数</h3>
+                            <p class="count">0</p>
+                        </div>
+                        <div class="card">
+                            <h3>完了率</h3>
+                            <p class="count">0%</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 商品データサマリーを追加 -->
+                <section class="product-summary-section">
+                    <h2>商品データサマリー</h2>
+                    <div class="product-summary">
+                        <!-- 商品データのサマリーがここに表示されます -->
+                    </div>
+                </section>
+
+                <!-- フィルターセクション -->
+                <section class="filter-section">
+                    <h2>フィルター</h2>
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="date-range">日付範囲:</label>
+                            <input type="date" id="start-date">
+                            <span>〜</span>
+                            <input type="date" id="end-date">
+                        </div>
+                        <div class="filter-group">
+                            <label for="assignee">担当者:</label>
+                            <select id="assignee">
+                                <option value="">すべて</option>
+                                <option value="田中">田中</option>
+                                <option value="佐藤">佐藤</option>
+                                <option value="鈴木">鈴木</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="category">カテゴリ:</label>
+                            <select id="category">
+                                <option value="">すべて</option>
+                                <option value="トップス">トップス</option>
+                                <option value="ボトムス">ボトムス</option>
+                                <option value="アウター">アウター</option>
+                            </select>
+                        </div>
+                        <button id="apply-filters" class="btn-primary">適用</button>
+                    </div>
+                </section>
+
+                <!-- チャートセクション -->
+                <section class="charts-section">
+                    <div class="chart-container">
+                        <h2>月別データ</h2>
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h2>日別データ</h2>
+                        <canvas id="dailyChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- テーブルセクション -->
+                <section class="tables-section">
+                    <div class="table-container">
+                        <h2>担当者別データ</h2>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>担当者</th>
+                                    <th>採寸点数</th>
+                                    <th>撮影点数</th>
+                                    <th>完了率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assignee-table-body">
+                                <!-- データはJavaScriptで動的に追加 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-container">
+                        <h2>カテゴリ別データ</h2>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>カテゴリ</th>
+                                    <th>採寸点数</th>
+                                    <th>撮影点数</th>
+                                    <th>完了率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="category-table-body">
+                                <!-- データはJavaScriptで動的に追加 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/data-manager.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
