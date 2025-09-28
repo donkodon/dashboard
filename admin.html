@@ -22,6 +22,8 @@
                 <div class="tab active" data-tab="upload">データアップロード</div>
                 <div class="tab" data-tab="manual">手動入力</div>
                 <div class="tab" data-tab="manage">データ管理</div>
+                <!-- 新しいタブを追加 -->
+                <div class="tab" data-tab="product-analysis">商品分析</div>
             </div>
 
             <!-- データアップロードタブ -->
@@ -37,6 +39,8 @@
                         <select id="data-type" class="form-control">
                             <option value="measurements">採寸データ</option>
                             <option value="photos">撮影データ</option>
+                            <!-- 新しいオプションを追加 -->
+                            <option value="productData">商品データ</option>
                         </select>
                     </div>
                     <button id="upload-csv" class="btn btn-primary">アップロード</button>
@@ -152,6 +156,29 @@
                                 <!-- データはJavaScriptで動的に追加 -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 商品分析タブを追加 -->
+            <section id="product-analysis-tab" class="tab-content" style="display: none;">
+                <div class="card">
+                    <h2>商品データ分析</h2>
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="analysis-type">分析タイプ:</label>
+                            <select id="analysis-type" class="form-control">
+                                <option value="work-efficiency">作業効率分析</option>
+                                <option value="item-distribution">アイテム分布</option>
+                                <option value="brand-analysis">ブランド分析</option>
+                                <option value="condition-analysis">状態分析</option>
+                            </select>
+                        </div>
+                        <button id="run-analysis" class="btn btn-primary">分析実行</button>
+                    </div>
+                    
+                    <div id="analysis-results">
+                        <!-- 分析結果がここに表示されます -->
                     </div>
                 </div>
             </section>

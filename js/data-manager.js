@@ -6,7 +6,9 @@ class DataManager {
             measurements: [],
             photos: [],
             assignees: [],
-            categories: []
+            categories: [],
+            // 新しいデータ構造を追加
+            productData: []
         };
     }
 
@@ -118,9 +120,29 @@ class DataManager {
             return true;
         } catch (error) {
             console.error('データの初期化に失敗しました:', error);
-            // エラー時も初期データを設定
-            this.data = this.getDefaultData();
-            return false;
+            // エラー時のフォールバック処理
+            try {
+                // ローカルストレージをクリアして再試行
+                console.log('ローカルストレージをクリアして再試行');
+                localStorage.removeItem('sasageData_metadata');
+                
+                // チャンクデータをクリア
+                for (let i = 0; i < 100; i++) { // 最大100チャンクまで削除
+                    localStorage.removeItem(`sasageData_measurements_${i}`);
+                    localStorage.removeItem(`sasageData_photos_${i}`);
+                }
+                
+                // 初期データを設定
+                this.data = this.getDefaultData();
+                this.saveData();
+                console.log('フォールバック処理完了');
+                return true;
+            } catch (fallbackError) {
+                console.error('フォールバック処理にも失敗しました:', fallbackError);
+                // 最終的なフォールバック: ハードコードされた初期データを使用
+                this.data = this.getDefaultData();
+                return false;
+            }
         }
     }
 
@@ -728,6 +750,297 @@ class DataManager {
         }
         
         return false;
+    }
+    
+    // 新しいデータ構造に対応したCSV解析
+    parseProductCSV(csv) {
+        console.log('商品データCSV解析開始');
+        
+        // BOMの除去
+        if (csv.charCodeAt(0) === 0xFEFF) {
+            csv = csv.slice(1);
+        }
+        
+        const lines = csv.split(/\r?\n/);
+        console.log('行数:', lines.length);
+        
+        // 空行を除去
+        const nonEmptyLines = lines.filter(line => line.trim() !== '');
+        console.log('空行を除いた行数:', nonEmptyLines.length);
+        
+        if (nonEmptyLines.length < 2) {
+            console.warn('CSVデータが不正です。ヘッダーとデータ行が必要です。');
+            return [];
+        }
+        
+        // 最初の行をヘッダーとして解析
+        const firstLine = nonEmptyLines[0];
+        // カンマ区切りまたはタブ区切りを検出
+        const delimiter = firstLine.includes(',') ? ',' : '\t';
+        let headers = firstLine.split(delimiter).map(h => {
+            // ヘッダーから余分な引用符やスペースを除去
+            return h.trim().replace(/^["']|["']$/g, '');
+        });
+        console.log('ヘッダー:', headers);
+        
+        // 文字化けヘッダーの検出（ただし、文字化けしている場合でも処理を続行）
+        // 文字化けしている可能性があるが、実際のデータを確認して処理を続行
+        // if (this.isCorruptedHeader(headers)) {
+        //     console.warn('文字化けしたヘッダーが検出されました。データをスキップします。');
+        //     return [];
+        // }
+        
+        const data = [];
+        
+        // 列のインデックスを明示的に定義（A列: 作業者, B列: 採寸か撮影, C列: 作業日, D列: 商品ID, H列: 作業時間(秒)）
+        const assigneeIndex = 0;  // A列
+        const typeIndex = 1;      // B列
+        const dateIndex = 2;      // C列
+        const productIdIndex = 3; // D列
+        const workTimeIndex = 7;  // H列
+        
+        console.log('列のインデックス:', {
+            assigneeIndex: assigneeIndex,
+            typeIndex: typeIndex,
+            dateIndex: dateIndex,
+            productIdIndex: productIdIndex,
+            workTimeIndex: workTimeIndex
+        });
+        
+        for (let i = 1; i < nonEmptyLines.length; i++) {
+            const line = nonEmptyLines[i];
+            // 空行をスキップ
+            if (line.trim() === '') continue;
+            
+            const values = line.split(delimiter);
+            
+            // 値の数が十分でない場合はスキップ
+            if (values.length < Math.max(assigneeIndex, typeIndex, dateIndex, productIdIndex, workTimeIndex) + 1) {
+                console.log(`行${i}は列数が不足のためスキップ:`, values);
+                continue;
+            }
+            
+            // 各列の値を取得
+            const assignee = values[assigneeIndex] ? values[assigneeIndex].trim().replace(/^["']|["']$/g, '') : '';
+            const type = values[typeIndex] ? values[typeIndex].trim().replace(/^["']|["']$/g, '') : '';
+            const date = values[dateIndex] ? values[dateIndex].trim().replace(/^["']|["']$/g, '') : '';
+            const productId = values[productIdIndex] ? values[productIdIndex].trim().replace(/^["']|["']$/g, '') : '';
+            const workTime = values[workTimeIndex] ? values[workTimeIndex].trim().replace(/^["']|["']$/g, '') : '';
+            
+            // 必須フィールドの検証
+            if (assignee && type && date && productId) {
+                // 作業時間を数値に変換（秒→分）
+                let workDuration = 0;
+                if (workTime && !isNaN(workTime)) {
+                    workDuration = parseFloat(workTime) / 60; // 秒を分に変換
+                }
+                
+                // データオブジェクトを作成
+                const row = {
+                    assignee: assignee,
+                    type: type,
+                    date: date,
+                    productId: productId,
+                    workTime: workTime,
+                    workDuration: workDuration // 分単位
+                };
+                
+                data.push(row);
+            } else {
+                console.log(`行${i}は必須フィールドを満たしていません:`, {
+                    assignee: assignee,
+                    type: type,
+                    date: date,
+                    productId: productId
+                });
+            }
+        }
+        
+        console.log('商品データCSV解析完了。有効なデータ数:', data.length);
+        return data;
+    }
+
+    // 文字化けヘッダーの検出
+    isCorruptedHeader(headers) {
+        // 正常な日本語ヘッダーを含む場合は文字化けではない
+        const validJapaneseHeaders = [
+            '商品ID', 'バーコード番号', '作業者', '販売店舗', 'ブランド', '品名', 'アイテム', '表記サイズ', 
+            '対象', 'カラー1', '素材表記', '実寸', 'ランク', '商品状態1', '作業時間', '撮影作業時間'
+        ];
+        let validJapaneseCount = 0;
+        
+        for (const header of headers) {
+            // 正常な日本語ヘッダーをチェック
+            let isValidHeader = false;
+            for (const validHeader of validJapaneseHeaders) {
+                if (header.includes(validHeader)) {
+                    isValidHeader = true;
+                    validJapaneseCount++;
+                    break;
+                }
+            }
+            
+            // 正常なヘッダーの場合は次のヘッダーをチェック
+            if (isValidHeader) {
+                continue;
+            }
+            
+            // 不正な文字（置換文字）をチェック
+            const corruptedChars = [String.fromCharCode(0xFFFD), '~', '~~'];
+            for (const char of corruptedChars) {
+                if (header.includes(char)) {
+                    // 正常な日本語を含み、かつ不正な文字が少なければ文字化けではない
+                    if (validJapaneseCount > 0) {
+                        const corruptedCharCount = (header.match(new RegExp(char, 'g')) || []).length;
+                        // 不正な文字が全体の30%以上含まれている場合は文字化けと判定
+                        if ((corruptedCharCount / header.length) <= 0.3) {
+                            continue;
+                        }
+                    }
+                    // 不正な文字が少ない場合は文字化けではない
+                    const corruptedCharCount = (header.match(new RegExp(char, 'g')) || []).length;
+                    if (corruptedCharCount < 3) {
+                        continue;
+                    }
+                    return true;
+                }
+            }
+            
+            // 不正なバイト列のパターンをチェック
+            const corruptedPatterns = [
+                /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/, // 制御文字
+            ];
+            
+            for (const pattern of corruptedPatterns) {
+                if (pattern.test(header)) {
+                    // 正常な日本語を含み、かつ不正な文字が少なければ文字化けではない
+                    if (validJapaneseCount > 0) {
+                        const corruptedPatternCount = (header.match(pattern) || []).length;
+                        // 不正な文字が全体の30%以上含まれている場合は文字化けと判定
+                        if ((corruptedPatternCount / header.length) <= 0.3) {
+                            continue;
+                        }
+                    }
+                    // 不正な文字が少ない場合は文字化けではない
+                    const corruptedPatternCount = (header.match(pattern) || []).length;
+                    if (corruptedPatternCount < 3) {
+                        continue;
+                    }
+                    return true;
+                }
+            }
+        }
+        
+        // すべてのヘッダーが不正な場合のみ文字化けと判定
+        return validJapaneseCount === 0 && headers.some(header => {
+            // 空のヘッダーは不正
+            if (!header) return true;
+            
+            // 非常に短いヘッダーは不正
+            if (header.length < 2) return true;
+            
+            return false;
+        });
+    }
+
+    // 商品データの追加
+    addProductData(productData) {
+        // IDがなければ生成
+        if (!productData.id) {
+            productData.id = Date.now() + Math.random();
+        }
+        this.data.productData.push(productData);
+        return true;
+    }
+    
+    // 商品データの取得
+    getProductData() {
+        return [...this.data.productData];
+    }
+    
+    // 商品データの保存
+    saveProductData() {
+        try {
+            console.log('商品データ保存開始:', this.data.productData.length, '件');
+            
+            // ローカルストレージに保存
+            localStorage.setItem('sasageProductData', JSON.stringify(this.data.productData));
+            
+            console.log('商品データ保存完了');
+            return true;
+        } catch (error) {
+            console.error('商品データの保存に失敗しました:', error);
+            
+            // 容量超過エラーの場合
+            if (error.name === 'QuotaExceededError') {
+                console.log('容量超過エラーが発生しました。');
+                this.showNotification('容量超過エラーが発生しました。データを減らすか、ブラウザのストレージをクリアしてください。', 'error');
+            }
+            
+            return false;
+        }
+    }
+    
+    // 商品データの読み込み
+    loadProductData() {
+        try {
+            console.log('商品データ読み込み開始');
+            
+            // ローカルストレージから読み込み
+            const productDataStr = localStorage.getItem('sasageProductData');
+            if (productDataStr) {
+                const parsedData = JSON.parse(productDataStr);
+                // データ構造の検証
+                if (Array.isArray(parsedData)) {
+                    this.data.productData = parsedData;
+                    console.log('商品データ読み込み完了:', this.data.productData.length, '件');
+                    return true;
+                } else {
+                    console.warn('商品データの形式が不正です。初期化します。');
+                    this.data.productData = [];
+                }
+            }
+            return true;
+        } catch (error) {
+            console.error('商品データの読み込みに失敗しました:', error);
+            return false;
+        }
+    }
+    
+    // データの追加（measurementsまたはphotos）
+    addData(data, type) {
+        try {
+            console.log(`データ追加開始: ${type}, ${data.length}件`);
+            
+            if (type === 'measurements') {
+                // 採寸データの追加
+                data.forEach(item => {
+                    // IDがなければ生成
+                    if (!item.id) {
+                        item.id = Date.now() + Math.random();
+                    }
+                    this.data.measurements.push(item);
+                });
+            } else if (type === 'photos') {
+                // 撮影データの追加
+                data.forEach(item => {
+                    // IDがなければ生成
+                    if (!item.id) {
+                        item.id = Date.now() + Math.random();
+                    }
+                    this.data.photos.push(item);
+                });
+            } else {
+                console.warn('不正なデータタイプ:', type);
+                return false;
+            }
+            
+            console.log(`データ追加完了: ${type}`);
+            return true;
+        } catch (error) {
+            console.error('データ追加エラー:', error);
+            return false;
+        }
     }
 }
 

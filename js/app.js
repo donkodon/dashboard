@@ -5,11 +5,14 @@ class SasageDashboard {
         this.dataManager = new DataManager();
         this.monthlyChart = null;
         this.dailyChart = null;
+        this.productData = []; // 商品データを保持するためのプロパティを追加
         this.init();
     }
 
     async init() {
         await this.dataManager.initialize();
+        // 商品データの読み込みを追加
+        this.dataManager.loadProductData();
         this.initializeCharts();
         this.bindEvents();
         this.loadData();
@@ -140,6 +143,7 @@ class SasageDashboard {
                 
                 // 10秒以内の更新のみ反映（時間を延長）
                 if (currentTime - lastUpdateTime < 10000) {
+                    console.log('ローカルストレージの更新を検出');
                     this.loadData();
                     // 処理後、タイムスタンプをクリアして重複処理を防ぐ
                     localStorage.removeItem('dashboardDataUpdated');
@@ -154,6 +158,15 @@ class SasageDashboard {
         window.addEventListener('dashboardDataUpdated', () => {
             console.log('ダッシュボード更新イベントを受信');
             this.loadData();
+        });
+        
+        // 追加: ページが表示状態になったときにもデータを更新
+        // これにより、タブ切り替えなどでデータが更新された場合にも反映される
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                console.log('ページが表示状態になったためデータを更新');
+                this.loadData();
+            }
         });
     }
 
@@ -189,6 +202,8 @@ class SasageDashboard {
             console.log('データ読み込み開始');
             // データマネージャーから最新データを取得
             await this.dataManager.initialize();
+            // 商品データも読み込む
+            this.dataManager.loadProductData();
             console.log('データマネージャー初期化完了:', this.dataManager.data);
             
             // 実際のデータでダッシュボードを更新
@@ -197,6 +212,9 @@ class SasageDashboard {
             const dailyData = this.dataManager.getDailySummary();
             const assigneeData = this.dataManager.getAssigneeSummary();
             const categoryData = this.dataManager.getCategorySummary();
+            
+            // 商品データも取得
+            this.productData = this.dataManager.getProductData();
             
             console.log('集計データ:', { summary, monthlyData, dailyData, assigneeData, categoryData });
             
@@ -207,6 +225,9 @@ class SasageDashboard {
                 assigneeData,
                 categoryData
             });
+            
+            // 商品データの表示を更新
+            this.updateProductDataDisplay();
             
             console.log('ダッシュボード更新完了');
         } catch (error) {
@@ -300,6 +321,58 @@ class SasageDashboard {
                     categoryTableBody.appendChild(row);
                 });
             }
+        }
+    }
+    
+    // 商品データ表示の更新
+    updateProductDataDisplay() {
+        try {
+            // 商品データの基本統計情報を計算
+            const totalProducts = this.productData.length;
+            
+            // 作業時間の計算
+            const workDurations = this.productData
+                .filter(item => item.workDuration && !isNaN(item.workDuration))
+                .map(item => parseFloat(item.workDuration));
+            
+            const totalWorkTime = workDurations.length > 0 
+                ? workDurations.reduce((sum, duration) => sum + duration, 0)
+                : 0;
+            
+            const avgWorkDuration = workDurations.length > 0 
+                ? (totalWorkTime / workDurations.length).toFixed(2)
+                : 0;
+            
+            // 採寸と撮影の件数を計算
+            const measurementCount = this.productData.filter(item => item.type === '採寸').length;
+            const photoCount = this.productData.filter(item => item.type === '撮影').length;
+            
+            // 商品データサマリーの更新
+            const productSummary = document.querySelector('.product-summary');
+            if (productSummary) {
+                productSummary.innerHTML = `
+                    <div class="summary-cards">
+                        <div class="card">
+                            <h3>商品点数</h3>
+                            <p class="count">${totalProducts}</p>
+                        </div>
+                        <div class="card">
+                            <h3>採寸件数</h3>
+                            <p class="count">${measurementCount}</p>
+                        </div>
+                        <div class="card">
+                            <h3>撮影件数</h3>
+                            <p class="count">${photoCount}</p>
+                        </div>
+                        <div class="card">
+                            <h3>平均作業時間</h3>
+                            <p class="count">${avgWorkDuration}分</p>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('商品データ表示の更新に失敗しました:', error);
         }
     }
 
